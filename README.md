@@ -3,7 +3,7 @@
 ````markdown
 # 📡 PortalDrop
 
-![PortalDrop Icon](portaldrop-512.png)
+![PortalDrop Icon](https://github.com/danitxu79/PortalDrop/blob/main/portaldrop-512.png)
 
 **El "AirDrop" Universal para Linux.**
 Transfiere archivos entre tu PC y cualquier dispositivo móvil (iOS/Android) sin instalar nada en el teléfono.
