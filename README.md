@@ -97,7 +97,15 @@ El ejecutable estará en la carpeta `dist/`.
 
 ## 📄 Licencia
 
-Este proyecto es Open Source bajo la licencia **MIT**. Siéntete libre de modificarlo, romperlo y mejorarlo.
+Este proyecto se ofrece bajo un modelo de **Doble Licencia (Dual License)**:
+
+1. **LGPLv3 (GNU Lesser General Public License v3):**
+   Ideal para proyectos de código abierto. Si usas esta biblioteca (especialmente si la modificas), debes cumplir con las obligaciones de la LGPLv3. Esto asegura que las mejoras al núcleo open-source se compartan con la comunidad.
+
+2. **Comercial (Privativa):**
+   Si los términos de la LGPLv3 no se ajustan a tus necesidades (por ejemplo, para incluir este software en productos propietarios de código cerrado sin revelar el código fuente), por favor contacta al autor para adquirir una licencia comercial.
+
+Para más detalles, consulta el archivo `LICENSE` incluido en este repositorio.
 
 ---
 
