@@ -92,14 +92,6 @@ Esto suele ser culpa del cortafuegos (Firewall) de Linux.
 
 ---
 
-## ðŸ"¸ Screenshot
-
-<div align="center">
-  <img src="https://github.com/danitxu79/PortalDrop/blob/main/screenshot.png" alt="PortalDrop Screenshot">
-</div>
-
----
-
 ## 📦 Crear un Ejecutable
 
 Si quieres distribuir PortalDrop sin necesidad de instalar Python, puedes crear un ejecutable con **PyInstaller**:
