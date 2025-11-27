@@ -1,16 +1,13 @@
-name: Build and Release
+name: Build and Release (Only on Publish)
 
-# SE ACTIVA CUANDO:
-# 1. Creas una Release (publicada)
-# 2. Haces push a main (para comprobar que no rompes nada, aunque no subirá archivos a releases)
+# CONFIGURACIÓN DEL DISPARADOR:
+# Solo se ejecuta cuando PUBLICAS una Release en GitHub.
+# Los commits normales (git push) serán ignorados por este script.
 on:
   release:
     types: [published]
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+  workflow_dispatch: # Permite forzarlo manualmente desde la web si fuera necesario
 
-# PERMISOS NECESARIOS PARA SUBIR ARCHIVOS
 permissions:
   contents: write
 
@@ -20,6 +17,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+
+    # Truco para obtener la versión limpia (sin la 'v') para los paquetes Linux
+    # Si la release es "v1.0.2", esto guarda "1.0.2"
+    - name: Extract Version
+      id: get_version
+      run: |
+        VERSION=${{ github.event.release.tag_name }}
+        echo "VERSION_CLEAN=${VERSION#v}" >> $GITHUB_ENV
+
     - name: Set up Python 3.10
       uses: actions/setup-python@v4
       with:
@@ -28,7 +34,6 @@ jobs:
     - name: Install System Dependencies
       run: |
         sudo apt-get update
-        # Incluimos el arreglo para Manjaro (libarchive-tools)
         sudo apt-get install -y libegl1 libdbus-1-3 xkb-data libxcb-cursor0 libxkbcommon-x11-0 ruby ruby-dev build-essential libarchive-tools
         sudo gem install fpm
 
@@ -60,14 +65,12 @@ jobs:
         Categories=Utility;Network;
         Terminal=false" > dist_package/usr/share/applications/portaldrop.desktop
 
-        # DEB, RPM, PACMAN
-        fpm -s dir -t deb -n portaldrop -v ${{ github.event.release.tag_name || '1.0.0' }} -C dist_package --description "AirDrop local" --maintainer "TuNombre" --architecture native -p portaldrop_linux_amd64.deb
-        fpm -s dir -t rpm -n portaldrop -v ${{ github.event.release.tag_name || '1.0.0' }} -C dist_package --description "AirDrop local" --architecture x86_64 -p portaldrop_linux_x86_64.rpm
-        fpm -s dir -t pacman -n portaldrop -v ${{ github.event.release.tag_name || '1.0.0' }} -C dist_package --description "AirDrop local" --architecture x86_64 -p portaldrop_linux_x86_64.pkg.tar.zst
+        # Usamos la variable de entorno VERSION_CLEAN que creamos arriba
+        fpm -s dir -t deb -n portaldrop -v ${{ env.VERSION_CLEAN }} -C dist_package --description "AirDrop local" --maintainer "TuNombre" --architecture native -p portaldrop_linux_amd64.deb
+        fpm -s dir -t rpm -n portaldrop -v ${{ env.VERSION_CLEAN }} -C dist_package --description "AirDrop local" --architecture x86_64 -p portaldrop_linux_x86_64.rpm
+        fpm -s dir -t pacman -n portaldrop -v ${{ env.VERSION_CLEAN }} -C dist_package --description "AirDrop local" --architecture x86_64 -p portaldrop_linux_x86_64.pkg.tar.zst
 
-    # ESTE ES EL PASO NUEVO: Subir a la Release
     - name: Upload to Release
-      if: github.event_name == 'release' # Solo si es una release real
       uses: softprops/action-gh-release@v1
       with:
         files: |
@@ -97,7 +100,6 @@ jobs:
         pyinstaller --noconfirm --onefile --windowed --name "PortalDrop" --add-data "portaldrop-512.png;." --icon "icon.ico" PortalDrop.py
 
     - name: Upload to Release
-      if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
         files: dist/PortalDrop.exe
@@ -124,7 +126,6 @@ jobs:
         zip -r PortalDrop-macOS.zip PortalDrop.app
 
     - name: Upload to Release
-      if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
         files: dist/PortalDrop-macOS.zip
