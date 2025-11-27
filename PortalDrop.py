@@ -73,7 +73,22 @@ class ReceiveServerThread(QThread):
         super().__init__()
         self.port = port
         self.httpd = None
-        self.upload_dir = Path.home() / "Downloads"
+
+        # --- CORRECCIÓN INTELIGENTE DE CARPETA ---
+        home = Path.home()
+
+        # 1. Intentamos detectar la carpeta en español
+        if (home / "Descargas").exists():
+            self.upload_dir = home / "Descargas"
+        # 2. Si no, probamos la estándar en inglés
+        elif (home / "Downloads").exists():
+            self.upload_dir = home / "Downloads"
+        # 3. Si no existe ninguna, usaremos "Downloads" y la creamos a la fuerza
+        else:
+            self.upload_dir = home / "Downloads"
+            self.upload_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"Guardando archivos en: {self.upload_dir}")
 
     def run(self):
         padre = self
