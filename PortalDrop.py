@@ -168,7 +168,7 @@ class PortalDropWindow(QWidget):
         self.active_thread = None
 
         # --- CARGAR ICONO ---
-        PyInstaller descomprime los datos en una carpeta temporal _MEIPASS
+        #PyInstaller descomprime los datos en una carpeta temporal _MEIPASS
         if getattr(sys, 'frozen', False):
             # Estamos corriendo en modo compilado (PyInstaller)
             base_path = Path(sys._MEIPASS)
