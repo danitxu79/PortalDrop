@@ -7,15 +7,17 @@ import http.server
 import socketserver
 import urllib.parse
 import re
+import zipfile
+import tempfile
+import shutil
 from pathlib import Path
 
 from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QVBoxLayout,
                                QPushButton, QStackedWidget, QMessageBox)
-from PySide6.QtCore import Qt, QThread, Signal, QSize
-from PySide6.QtGui import QPixmap, QImage, QIcon # <--- Importamos QIcon
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QPixmap, QImage, QIcon
 
 # --- LÓGICA DE RED (BACKEND) ---
-# (Esta parte no cambia, es igual a la V2.1)
 
 class NetworkUtils:
     @staticmethod
@@ -39,18 +41,66 @@ class NetworkUtils:
         qimage.loadFromData(buffer.getvalue())
         return QPixmap.fromImage(qimage)
 
+# --- SERVIDOR PARA ENVIAR (PC -> MÓVIL) ---
 class SendServerThread(QThread):
-    def __init__(self, file_path, port):
+    def __init__(self, file_paths, port):
         super().__init__()
-        self.file_path = file_path
+        self.file_paths = file_paths # Ahora recibimos una LISTA de rutas
         self.port = port
         self.httpd = None
+        self.temp_dir = None # Para limpiar después si creamos un zip
+
+        # Variables que decidiremos en prepare_content()
+        self.serve_directory = None
+        self.serve_filename = None
+
+    def prepare_content(self):
+        """
+        Analiza si es un archivo o varios y prepara lo que se va a servir.
+        Devuelve (nombre_archivo_final, ruta_directorio_a_servir)
+        """
+        # CASO 1: Un solo archivo
+        if len(self.file_paths) == 1 and self.file_paths[0].is_file():
+            file_path = self.file_paths[0]
+            self.serve_directory = file_path.parent
+            self.serve_filename = file_path.name
+            return self.serve_filename
+
+        # CASO 2: Múltiples archivos -> Crear ZIP
+        else:
+            # Crear directorio temporal
+            self.temp_dir = tempfile.mkdtemp(prefix="portaldrop_")
+            zip_name = "PortalDrop_Pack.zip"
+            zip_path = Path(self.temp_dir) / zip_name
+
+            # Crear el ZIP
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for path in self.file_paths:
+                    if path.is_file():
+                        zipf.write(path, arcname=path.name)
+                    elif path.is_dir():
+                        # Si arrastran una carpeta, la zipeamos recursivamente
+                        for root, dirs, files in os.walk(path):
+                            for file in files:
+                                full_path = Path(root) / file
+                                relative_path = full_path.relative_to(path.parent)
+                                zipf.write(full_path, arcname=str(relative_path))
+
+            self.serve_directory = Path(self.temp_dir)
+            self.serve_filename = zip_name
+            return self.serve_filename
 
     def run(self):
-        directory = self.file_path.parent
+        # Configuramos qué vamos a servir antes de levantar el servidor
+        # Esto ya debería estar listo, pero por seguridad usamos las vars
+        if not self.serve_directory:
+            return
+
+        directory = str(self.serve_directory)
+
         class Handler(http.server.SimpleHTTPRequestHandler):
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, directory=str(directory), **kwargs)
+                super().__init__(*args, directory=directory, **kwargs)
             def log_message(self, format, *args): pass
 
         try:
@@ -64,8 +114,18 @@ class SendServerThread(QThread):
         if self.httpd:
             self.httpd.shutdown()
             self.httpd.server_close()
-            self.wait()
 
+        # Limpieza: Si creamos un temporal, lo borramos al terminar
+        if self.temp_dir and os.path.exists(self.temp_dir):
+            try:
+                shutil.rmtree(self.temp_dir)
+            except:
+                pass
+
+        self.wait()
+
+# --- SERVIDOR PARA RECIBIR (MÓVIL -> PC) ---
+# (Sin cambios importantes respecto a la v2.2)
 class ReceiveServerThread(QThread):
     file_received = Signal(str)
 
@@ -74,21 +134,13 @@ class ReceiveServerThread(QThread):
         self.port = port
         self.httpd = None
 
-        # --- CORRECCIÓN INTELIGENTE DE CARPETA ---
+        # Detección inteligente de carpeta Descargas
         home = Path.home()
-
-        # 1. Intentamos detectar la carpeta en español
-        if (home / "Descargas").exists():
-            self.upload_dir = home / "Descargas"
-        # 2. Si no, probamos la estándar en inglés
-        elif (home / "Downloads").exists():
-            self.upload_dir = home / "Downloads"
-        # 3. Si no existe ninguna, usaremos "Downloads" y la creamos a la fuerza
+        if (home / "Descargas").exists(): self.upload_dir = home / "Descargas"
+        elif (home / "Downloads").exists(): self.upload_dir = home / "Downloads"
         else:
             self.upload_dir = home / "Downloads"
             self.upload_dir.mkdir(parents=True, exist_ok=True)
-
-        print(f"Guardando archivos en: {self.upload_dir}")
 
     def run(self):
         padre = self
@@ -141,11 +193,7 @@ class ReceiveServerThread(QThread):
                             content = content.rstrip(b'\r\n')
                             headers_str = headers_raw.decode(errors='ignore')
                             match = re.search(r'filename="(.+?)"', headers_str)
-                            if match:
-                                filename = Path(match.group(1)).name
-                            else:
-                                import time
-                                filename = f"PortalDrop_{int(time.time())}.bin"
+                            filename = Path(match.group(1)).name if match else f"PortalDrop_{int(time.time())}.bin"
 
                             filepath = padre.upload_dir / filename
                             with open(filepath, 'wb') as f: f.write(content)
@@ -182,23 +230,18 @@ class PortalDropWindow(QWidget):
         self.port = 8000
         self.active_thread = None
 
-        # --- CARGAR ICONO ---
-        #PyInstaller descomprime los datos en una carpeta temporal _MEIPASS
+        # Cargar icono
         if getattr(sys, 'frozen', False):
-            # Estamos corriendo en modo compilado (PyInstaller)
             base_path = Path(sys._MEIPASS)
         else:
-            # Estamos corriendo como script normal .py
             base_path = Path(__file__).parent
-
         icon_path = base_path / "portaldrop-512.png"
 
         if icon_path.exists():
             self.app_icon = QIcon(str(icon_path))
-            self.setWindowIcon(self.app_icon) # Icono de la ventana/barra tareas
+            self.setWindowIcon(self.app_icon)
         else:
             self.app_icon = None
-            print("Aviso: No se encontró portaldrop-512.png")
 
         # Layout Setup
         self.main_layout = QVBoxLayout()
@@ -207,28 +250,24 @@ class PortalDropWindow(QWidget):
         self.stack = QStackedWidget()
         self.main_layout.addWidget(self.stack)
 
-        # --- MENU PRINCIPAL ---
+        # --- PAGINA MENU ---
         self.page_menu = QWidget()
         layout_menu = QVBoxLayout()
         self.page_menu.setLayout(layout_menu)
 
-        # LOGO O TEXTO
         lbl_logo = QLabel()
         lbl_logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Si tenemos icono, lo mostramos en grande. Si no, texto.
         if self.app_icon:
-            pixmap = self.app_icon.pixmap(128, 128) # Tamaño 128x128
-            lbl_logo.setPixmap(pixmap)
+            lbl_logo.setPixmap(self.app_icon.pixmap(128, 128))
         else:
             lbl_logo.setText("PortalDrop")
             lbl_logo.setStyleSheet("font-size: 30px; font-weight: bold; color: white;")
 
-        lbl_title = QLabel("PortalDrop") # Título debajo del logo
+        lbl_title = QLabel("PortalDrop")
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_title.setStyleSheet("font-size: 24px; font-weight: bold; color: white; margin-top: 10px;")
 
-        lbl_inst = QLabel("Arrastra un archivo para ENVIAR\n- O -")
+        lbl_inst = QLabel("Arrastra archivos para ENVIAR\n(Soporta múltiples archivos)")
         lbl_inst.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_inst.setStyleSheet("color: #aaa; margin: 20px;")
 
@@ -238,18 +277,19 @@ class PortalDropWindow(QWidget):
 
         layout_menu.addStretch()
         layout_menu.addWidget(lbl_logo)
-        layout_menu.addWidget(lbl_title) # Añadido el título explícito
+        layout_menu.addWidget(lbl_title)
         layout_menu.addWidget(lbl_inst)
         layout_menu.addWidget(self.btn_receive)
         layout_menu.addStretch()
 
-        # --- PANTALLA ACTIVA ---
+        # --- PAGINA ACTIVA ---
         self.page_active = QWidget()
         layout_active = QVBoxLayout()
         self.page_active.setLayout(layout_active)
 
         self.lbl_status = QLabel("Esperando...")
         self.lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_status.setWordWrap(True)
         self.lbl_status.setStyleSheet("font-size: 16px; font-weight: bold; margin-top: 10px;")
 
         self.lbl_qr = QLabel()
@@ -290,13 +330,29 @@ class PortalDropWindow(QWidget):
     def dropEvent(self, event):
         urls = event.mimeData().urls()
         if urls:
-            self.start_send_mode(Path(urls[0].toLocalFile()))
+            # Convertimos todas las URLs a Paths locales
+            file_paths = [Path(u.toLocalFile()) for u in urls]
+            self.start_send_mode(file_paths)
 
-    def start_send_mode(self, file_path):
+    def start_send_mode(self, file_paths):
         self.stop_any_server()
-        self.active_thread = SendServerThread(file_path, self.port)
+
+        # Iniciamos el thread pasándole la lista
+        self.active_thread = SendServerThread(file_paths, self.port)
+
+        # Preparamos el contenido (si es ZIP, esto puede tardar unos segundos si son gb)
+        # Idealmente esto debería ir en un hilo de carga, pero para uso normal es rápido
+        filename_to_serve = self.active_thread.prepare_content()
+
         self.active_thread.start()
-        self.show_qr_page(f"Sirviendo: {file_path.name}", f"/{urllib.parse.quote(file_path.name)}")
+
+        # Texto para la UI
+        if len(file_paths) > 1:
+            ui_text = f"Pack de {len(file_paths)} archivos\n({filename_to_serve})"
+        else:
+            ui_text = f"Sirviendo:\n{filename_to_serve}"
+
+        self.show_qr_page(ui_text, f"/{urllib.parse.quote(filename_to_serve)}")
 
     def start_receive_mode(self):
         self.stop_any_server()
@@ -332,18 +388,11 @@ class PortalDropWindow(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
-    # INTENTO EXTRA PARA LINUX (GNOME/UBUNTU)
-    # A veces el icono no sale en el dock si no le dices a Qt que es una "App de escritorio"
-    # Esto asigna un ID a la aplicación.
     if sys.platform == 'linux':
         try:
             import ctypes
-            myappid = 'portaldrop.linux.gui.v2'
             ctypes.cdll.LoadLibrary('libgtk-3.so.0')
-        except:
-            pass
-
+        except: pass
     window = PortalDropWindow()
     window.show()
     sys.exit(app.exec())
