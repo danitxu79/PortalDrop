@@ -21,7 +21,7 @@ jobs:
     - name: Install System Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libegl1 libdbus-1-3 xkb-data libxcb-cursor0 libxkbcommon-x11-0 ruby ruby-dev build-essential
+        sudo apt-get install -y libegl1 libdbus-1-3 xkb-data libxcb-cursor0 libxkbcommon-x11-0 ruby ruby-dev build-essential libarchive-tools
         sudo gem install fpm
 
     - name: Install Python dependencies
