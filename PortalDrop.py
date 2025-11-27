@@ -167,9 +167,16 @@ class PortalDropWindow(QWidget):
         self.port = 8000
         self.active_thread = None
 
-        # --- NUEVO: CARGAR ICONO ---
-        # Buscamos el archivo en la misma carpeta que el script
-        icon_path = Path(__file__).parent / "portaldrop-512.png"
+        # --- CARGAR ICONO ---
+        PyInstaller descomprime los datos en una carpeta temporal _MEIPASS
+        if getattr(sys, 'frozen', False):
+            # Estamos corriendo en modo compilado (PyInstaller)
+            base_path = Path(sys._MEIPASS)
+        else:
+            # Estamos corriendo como script normal .py
+            base_path = Path(__file__).parent
+
+        icon_path = base_path / "portaldrop-512.png"
 
         if icon_path.exists():
             self.app_icon = QIcon(str(icon_path))
