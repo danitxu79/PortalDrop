@@ -1,14 +1,21 @@
-name: Build All Platforms
+name: Build and Release
 
+# SE ACTIVA CUANDO:
+# 1. Creas una Release (publicada)
+# 2. Haces push a main (para comprobar que no rompes nada, aunque no subirá archivos a releases)
 on:
+  release:
+    types: [published]
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
   workflow_dispatch:
 
+# PERMISOS NECESARIOS PARA SUBIR ARCHIVOS
+permissions:
+  contents: write
+
 jobs:
-  # --- TRABAJO 1: LINUX (Debian, RPM, Arch) ---
+  # --- LINUX ---
   build-linux:
     runs-on: ubuntu-latest
     steps:
@@ -21,6 +28,7 @@ jobs:
     - name: Install System Dependencies
       run: |
         sudo apt-get update
+        # Incluimos el arreglo para Manjaro (libarchive-tools)
         sudo apt-get install -y libegl1 libdbus-1-3 xkb-data libxcb-cursor0 libxkbcommon-x11-0 ruby ruby-dev build-essential libarchive-tools
         sudo gem install fpm
 
@@ -31,10 +39,9 @@ jobs:
 
     - name: Build Linux Binary
       run: |
-        # Usamos el separador : para Linux en add-data
         pyinstaller --noconfirm --onefile --windowed --name "portaldrop" --add-data "portaldrop-512.png:." --icon "portaldrop-512.png" PortalDrop.py
 
-    - name: Create Linux Packages (DEB/RPM/PACMAN)
+    - name: Create Linux Packages
       run: |
         mkdir -p dist_package/usr/bin
         mkdir -p dist_package/usr/share/icons/hicolor/512x512/apps
@@ -53,24 +60,23 @@ jobs:
         Categories=Utility;Network;
         Terminal=false" > dist_package/usr/share/applications/portaldrop.desktop
 
-        # DEB
-        fpm -s dir -t deb -n portaldrop -v 1.0.0 -C dist_package --description "AirDrop local" --maintainer "TuNombre" --architecture native -p portaldrop_linux_amd64.deb
-        # RPM
-        fpm -s dir -t rpm -n portaldrop -v 1.0.0 -C dist_package --description "AirDrop local" --architecture x86_64 -p portaldrop_linux_x86_64.rpm
-        # PACMAN
-        fpm -s dir -t pacman -n portaldrop -v 1.0.0 -C dist_package --description "AirDrop local" --architecture x86_64 -p portaldrop_linux_x86_64.pkg.tar.zst
+        # DEB, RPM, PACMAN
+        fpm -s dir -t deb -n portaldrop -v ${{ github.event.release.tag_name || '1.0.0' }} -C dist_package --description "AirDrop local" --maintainer "TuNombre" --architecture native -p portaldrop_linux_amd64.deb
+        fpm -s dir -t rpm -n portaldrop -v ${{ github.event.release.tag_name || '1.0.0' }} -C dist_package --description "AirDrop local" --architecture x86_64 -p portaldrop_linux_x86_64.rpm
+        fpm -s dir -t pacman -n portaldrop -v ${{ github.event.release.tag_name || '1.0.0' }} -C dist_package --description "AirDrop local" --architecture x86_64 -p portaldrop_linux_x86_64.pkg.tar.zst
 
-    - name: Upload Linux Artifacts
-      uses: actions/upload-artifact@v4
+    # ESTE ES EL PASO NUEVO: Subir a la Release
+    - name: Upload to Release
+      if: github.event_name == 'release' # Solo si es una release real
+      uses: softprops/action-gh-release@v1
       with:
-        name: PortalDrop-Linux
-        path: |
+        files: |
           portaldrop_linux_amd64.deb
           portaldrop_linux_x86_64.rpm
           portaldrop_linux_x86_64.pkg.tar.zst
           dist/portaldrop
 
-  # --- TRABAJO 2: WINDOWS (.exe) ---
+  # --- WINDOWS ---
   build-windows:
     runs-on: windows-latest
     steps:
@@ -85,23 +91,18 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: Convert Icon to ICO
-      # Windows necesita .ico. Usamos Pillow (ya instalado) para convertirlo al vuelo.
+    - name: Convert Icon and Build
       run: |
         python -c "from PIL import Image; Image.open('portaldrop-512.png').save('icon.ico', format='ICO', sizes=[(256, 256)])"
-
-    - name: Build Windows Exe
-      run: |
-        # En Windows el separador de add-data es ;
         pyinstaller --noconfirm --onefile --windowed --name "PortalDrop" --add-data "portaldrop-512.png;." --icon "icon.ico" PortalDrop.py
 
-    - name: Upload Windows Artifact
-      uses: actions/upload-artifact@v4
+    - name: Upload to Release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
       with:
-        name: PortalDrop-Windows
-        path: dist/PortalDrop.exe
+        files: dist/PortalDrop.exe
 
-  # --- TRABAJO 3: MACOS (.app) ---
+  # --- MACOS ---
   build-macos:
     runs-on: macos-latest
     steps:
@@ -116,20 +117,14 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: Build macOS App
+    - name: Build and Zip
       run: |
-        # En Mac el separador es :
-        # Generará dist/PortalDrop.app
         pyinstaller --noconfirm --windowed --name "PortalDrop" --add-data "portaldrop-512.png:." --icon "portaldrop-512.png" PortalDrop.py
-
-    - name: Zip Application
-      # GitHub no deja subir carpetas .app tal cual, hay que comprimirlas
-      run: |
         cd dist
         zip -r PortalDrop-macOS.zip PortalDrop.app
 
-    - name: Upload macOS Artifact
-      uses: actions/upload-artifact@v4
+    - name: Upload to Release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
       with:
-        name: PortalDrop-MacOS
-        path: dist/PortalDrop-macOS.zip
+        files: dist/PortalDrop-macOS.zip
