@@ -15,6 +15,15 @@
 
 ---
 
+## 📸 Capturas de Pantalla
+
+<div align="center">
+  <img src="screenshot.png" alt="Interfaz de PortalDrop" width="600" style="border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.5);">
+  <p><i>Interfaz minimalista en modo oscuro con soporte Drag & Drop</i></p>
+</div>
+
+---
+
 ## 🚀 ¿Qué es PortalDrop?
 
 PortalDrop es una herramienta de escritorio minimalista construida con **Python** y **Qt6 (PySide6)**.
@@ -80,6 +89,14 @@ Esto suele ser culpa del cortafuegos (Firewall) de Linux.
 * **Backend:** Servidor HTTP nativo de Python (`http.server` y `socketserver`) ejecutado en hilos separados (`QThread`) para no congelar la interfaz.
 * **Red:** Detecta automáticamente la IP de la LAN abriendo un socket UDP efímero.
 * **Protocolo:** HTTP estándar. Los archivos se envían tal cual (binario) mediante `Multipart/Form-Data` para subidas.
+
+---
+
+## ðŸ"¸ Screenshot
+
+<div align="center">
+  <img src="https://github.com/danitxu79/PortalDrop/blob/main/screenshot.png" alt="PortalDrop Screenshot">
+</div>
 
 ---
 

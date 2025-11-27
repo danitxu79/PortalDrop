@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+    <id>portaldrop</id>
+    <metadata_license>MIT</metadata_license>
+    <project_license>MIT</project_license>
+    <name>PortalDrop</name>
+    <summary>AirDrop universal para Linux</summary>
+    <description>
+        <p>
+            PortalDrop permite transferir archivos entre tu PC y cualquier dispositivo móvil
+            (iOS o Android) sin necesidad de instalar ninguna aplicación extra en el teléfono.
+        </p>
+        <ul>
+            <li>Arrastra y suelta archivos para generar un enlace de descarga QR.</li>
+            <li>Recibe archivos desde el móvil directamente a tu carpeta de Descargas.</li>
+            <li>Transfiere múltiples archivos comprimidos automáticamente en ZIP.</li>
+            <li>No requiere internet, funciona 100% en red local (WiFi/LAN).</li>
+        </ul>
+    </description>
+
+    <launchable type="desktop-id">portaldrop.desktop</launchable>
+
+    <screenshots>
+        <screenshot type="default">
+            <image>https://raw.githubusercontent.com/danitxu79/PortalDrop/main/screenshot.png</image>
+        </screenshot>
+    </screenshots>
+
+    <url type="homepage">https://github.com/danitxu79/PortalDrop</url>
+    <url type="bugtracker">https://github.com/danitxu79/PortalDrop/issues</url>
+
+    <content_rating type="oars-1.1" />
+
+    <releases>
+        <release version="1.6.1" date="2025-11-27" />
+    </releases>
+
+    <icon type="stock">portaldrop</icon>
+</component>
