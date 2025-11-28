@@ -127,7 +127,7 @@ Para más detalles, consulta el archivo `LICENSE` incluido en este repositorio.
 Desarrollado por **Daniel Serrano Armenta**
 
 * 📧 **Email:** [anabasasoft@gmail.com](mailto:anabasasoft@gmail.com)
-* 🐙 **GitHub:** [github.com/danitxu79](https://github.com/danitxu79/)
+* 🐙 **GitHub:** [github.com/anabasasoft](https://github.com/anabasasoft/)
 * 🌐 **Portafolio:** [danitxu79.github.io](https://danitxu79.github.io/)
 
 ---
