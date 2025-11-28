@@ -1,11 +1,11 @@
 # 📡 PortalDrop
 
 <div align="center">
-  <img src="https://github.com/danitxu79/PortalDrop/blob/main/AnabasaSoft.png" alt="AnabasaSoft">
+  <img src="https://github.com/AnabasaSoft/PortalDrop/blob/main/AnabasaSoft.png" alt="AnabasaSoft">
   
   <br><br>
   
-  <img src="https://github.com/danitxu79/PortalDrop/blob/main/portaldrop-512.png" width="250" alt="PortalDrop Icon">
+  <img src="https://github.com/AnabasaSoft/PortalDrop/blob/main/portaldrop-512.png" width="250" alt="PortalDrop Icon">
   
   <br><br>
   
@@ -48,7 +48,7 @@ Resuelve un problema común: **Pasar una foto o documento del móvil al PC (o vi
 ### 1. Clonar y preparar entorno
 ```bash
 # Clonar el repositorio
-git clone https://github.com/danitxu79/PortalDrop.git
+git clone https://github.com/AnabasaSoft/PortalDrop.git
 cd PortalDrop
 
 # Crear entorno virtual
@@ -126,7 +126,7 @@ Para más detalles, consulta el archivo `LICENSE` incluido en este repositorio.
 
 Desarrollado por **Daniel Serrano Armenta**
 
-* 📧 **Email:** [dani.eus79@gmail.com](mailto:dani.eus79@gmail.com)
+* 📧 **Email:** [anabasasoft@gmail.com](mailto:anabasasoft@gmail.com)
 * 🐙 **GitHub:** [github.com/danitxu79](https://github.com/danitxu79/)
 * 🌐 **Portafolio:** [danitxu79.github.io](https://danitxu79.github.io/)
 
